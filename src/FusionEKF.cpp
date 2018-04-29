@@ -58,8 +58,6 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       * Create the covariance matrix.
       * Remember: you'll need to convert radar from polar to cartesian coordinates.
     */
-    // first measurement
-    cout << "EKF: " << endl;
     ekf_.x_ = VectorXd(4);
     ekf_.x_ << 1, 1, 1, 1;
 
@@ -84,6 +82,17 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       */
       ekf_.x_ << measurement_pack.raw_measurements_(0), measurement_pack.raw_measurements_(1), 0.0, 0.0;
     }
+
+    if (fabs(ekf_.x_(0)) < 0.01 and fabs(ekf_.x_(1)) < 0.01){
+        ekf_.x_(0) = 0.01;
+        ekf_.x_(1) = 0.01;
+    }
+    ekf_.P_ = MatrixXd(4, 4);
+    ekf_.P_ << 1, 0, 0, 0,
+               0, 1, 0, 0,
+               0, 0, 1000, 0,
+               0, 0, 0, 1000;
+
     previous_timestamp_ = measurement_pack.timestamp_;
 
     // done initializing, no need to predict or update
@@ -102,24 +111,24 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
      * Update the process noise covariance matrix.
      * Use noise_ax = 9 and noise_ay = 9 for your Q matrix.
    */
-auto dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000/0;
-    previous_timestamp_ = measurement_pack.timestamp_;
+  auto dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000;
+  previous_timestamp_ = measurement_pack.timestamp_;
 
-    auto dt_2 = dt * dt;
-    auto dt_3 = dt_2 * dt;
-    auto dt_4 = dt_3 * dt;
+  auto dt_2 = dt * dt;
+  auto dt_3 = dt_2 * dt;
+  auto dt_4 = dt_3 * dt;
 
-    ekf_.F_(0, 2) = dt;
-    ekf_.F_(1, 3) = dt;
+  ekf_.F_(0, 2) = dt;
+  ekf_.F_(1, 3) = dt;
 
-    auto noise_ax = 9;
-    auto noise_ay = 9;
+  auto noise_ax = 9;
+  auto noise_ay = 9;
 
-    ekf_.Q_ = MatrixXd(4, 4);
-    ekf_.Q_ << dt_4/4*noise_ax, 0, dt_3/2*noise_ax, 0,
-               0, dt_4/4*noise_ay, 0, dt_3/2*noise_ay,
-               dt_3/2*noise_ax, 0, dt_2*noise_ax, 0,
-               0, dt_3/2*noise_ay, 0, dt_2*noise_ay;
+  ekf_.Q_ = MatrixXd(4, 4);
+  ekf_.Q_ << dt_4/4 * noise_ax, 0, dt_3/2 * noise_ax, 0,
+             0, dt_4/4 * noise_ay, 0, dt_3/2 * noise_ay,
+             dt_3/2 * noise_ax, 0, dt_2 * noise_ax, 0,
+             0, dt_3/2 * noise_ay, 0, dt_2 * noise_ay;
   ekf_.Predict();
 
   /*****************************************************************************
@@ -144,8 +153,4 @@ auto dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000/0;
       ekf_.R_ = R_laser_;
       ekf_.Update(measurement_pack.raw_measurements_);
   }
-
-  // print the output
-  cout << "x_ = " << ekf_.x_ << endl;
-  cout << "P_ = " << ekf_.P_ << endl;
 }
