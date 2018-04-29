@@ -42,7 +42,16 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
     float vx = x_state(2);
     float vy = x_state(3);
 
+    if (fabs(px) < 0.0001 and fabs(py) < 0.0001){
+        px = 0.0001;
+        py = 0.0001;
+    }
     float eq1 = px * px + py * py;
+
+    if(fabs(eq1) < 0.0000001){
+        eq1 = 0.0000001;
+    }
+
     float eq2 = sqrt(eq1);
     float eq3 = eq1 * eq2;
 

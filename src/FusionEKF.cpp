@@ -59,20 +59,20 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       * Remember: you'll need to convert radar from polar to cartesian coordinates.
     */
     ekf_.x_ = VectorXd(4);
-    ekf_.x_ << 1, 1, 1, 1;
+    // ekf_.x_ << 1, 1, 1, 1;
 
-    ekf_.F_ = MatrixXd(4, 4);
-    ekf_.F_ << 1, 0, 0, 0,
-              0, 1, 0, 1,
-              0, 0, 1, 0,
-              0, 0, 0, 1;
+//    ekf_.F_ = MatrixXd(4, 4);
+//    ekf_.F_ << 1, 0, 0, 0,
+//               0, 1, 0, 1,
+//               0, 0, 1, 0,
+//               0, 0, 0, 1;
     if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
       /**
       Convert radar from polar to cartesian coordinates and initialize state.
       */
-        auto rho = measurement_pack.raw_measurements_(0);
-        auto phi = measurement_pack.raw_measurements_(1);
-        auto rhodot = measurement_pack.raw_measurements_(2);
+      float rho = measurement_pack.raw_measurements_[0];
+      float phi = measurement_pack.raw_measurements_[1];
+      float rhodot = measurement_pack.raw_measurements_[2];
 
       ekf_.x_ << rho * cos(phi), rho * sin(phi), rhodot * cos(phi), rhodot * sin(phi);
     }
@@ -80,12 +80,12 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       /**
       Initialize state.
       */
-      ekf_.x_ << measurement_pack.raw_measurements_(0), measurement_pack.raw_measurements_(1), 0.0, 0.0;
+      ekf_.x_ << measurement_pack.raw_measurements_[0], measurement_pack.raw_measurements_[1], 0.0, 0.0;
     }
 
-    if (fabs(ekf_.x_(0)) < 0.01 and fabs(ekf_.x_(1)) < 0.01){
-        ekf_.x_(0) = 0.01;
-        ekf_.x_(1) = 0.01;
+    if (fabs(ekf_.x_(0)) < 0.0001 and fabs(ekf_.x_(1)) < 0.0001){
+        ekf_.x_(0) = 0.0001;
+        ekf_.x_(1) = 0.0001;
     }
     ekf_.P_ = MatrixXd(4, 4);
     ekf_.P_ << 1, 0, 0, 0,
@@ -111,24 +111,27 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
      * Update the process noise covariance matrix.
      * Use noise_ax = 9 and noise_ay = 9 for your Q matrix.
    */
-  auto dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000;
+  float dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000.0;
   previous_timestamp_ = measurement_pack.timestamp_;
 
-  auto dt_2 = dt * dt;
-  auto dt_3 = dt_2 * dt;
-  auto dt_4 = dt_3 * dt;
+  float dt_2 = dt * dt;
+  float dt_3 = dt_2 * dt;
+  float dt_4 = dt_3 * dt;
 
-  ekf_.F_(0, 2) = dt;
-  ekf_.F_(1, 3) = dt;
+  ekf_.F_ = MatrixXd(4, 4);
+  ekf_.F_ << 1, 0, dt, 0,
+             0, 1, 0, dt,
+             0, 0, 1, 0,
+             0, 0, 0, 1;
 
-  auto noise_ax = 9;
-  auto noise_ay = 9;
+  float noise_ax = 9.0;
+  float noise_ay = 9.0;
 
   ekf_.Q_ = MatrixXd(4, 4);
-  ekf_.Q_ << dt_4/4 * noise_ax, 0, dt_3/2 * noise_ax, 0,
-             0, dt_4/4 * noise_ay, 0, dt_3/2 * noise_ay,
-             dt_3/2 * noise_ax, 0, dt_2 * noise_ax, 0,
-             0, dt_3/2 * noise_ay, 0, dt_2 * noise_ay;
+  ekf_.Q_ << dt_4 / 4 * noise_ax, 0, dt_3 / 2 * noise_ax, 0,
+             0, dt_4 / 4 * noise_ay, 0, dt_3 / 2 * noise_ay,
+             dt_3 / 2 * noise_ax, 0, dt_2 * noise_ax, 0,
+             0, dt_3 / 2 * noise_ay, 0, dt_2 * noise_ay;
   ekf_.Predict();
 
   /*****************************************************************************
@@ -143,7 +146,6 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
 
   if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar updates
-      Tools tools;
       ekf_.H_ = tools.CalculateJacobian(ekf_.x_);
       ekf_.R_ = R_radar_;
       ekf_.UpdateEKF(measurement_pack.raw_measurements_);
